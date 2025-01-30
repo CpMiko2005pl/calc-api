@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS  # 🔴 Obsługa CORS
+from flask_cors import CORS
 import sympy as sp
 
 app = Flask(__name__)
-CORS(app)  # 🔴 Zezwala na żądania z przeglądarki
+CORS(app)  # Obsługa CORS
 
 @app.route("/integrate", methods=["POST"])
 def integrate():
@@ -32,7 +32,7 @@ def integrate():
 def compare():
     data = request.json
     try:
-        # 🔴 Sprawdzenie, czy dane istnieją
+        # Sprawdzenie, czy dane istnieją
         if "result1" not in data or "result2" not in data:
             return jsonify({"error": "Brak wymaganych danych"}), 400
 
@@ -52,3 +52,7 @@ def compare():
         return jsonify({"similarity_score": similarity_score})
     except Exception as e:
         return jsonify({"error": f"Błąd porównywania: {str(e)}"}), 400
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+ 
