@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import sympy as sp
 
 app = Flask(__name__)
+CORS(app)  # 🔴 Dodajemy obsługę CORS
 
 @app.route("/integrate", methods=["POST"])
 def integrate():
