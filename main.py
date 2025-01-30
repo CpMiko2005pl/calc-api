@@ -1,25 +1,32 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS  # 🔴 Obsługa CORS
 import sympy as sp
 
 app = Flask(__name__)
-CORS(app)  # 🔴 Obsługa CORS
+CORS(app)  # 🔴 Zezwala na żądania z przeglądarki
 
 @app.route("/integrate", methods=["POST"])
 def integrate():
     data = request.json
     try:
-        # Automatycznie wykrywa zmienną w podanej funkcji
-        symbols = list(sp.sympify(data["function"]).free_symbols)
+        function_str = data.get("function", "")
+        if not function_str:
+            return jsonify({"error": "Brak funkcji do całkowania"}), 400
+
+        # Zamiana stringa na wyrażenie SymPy
+        function = sp.sympify(function_str)
+
+        # Automatyczne wykrywanie zmiennej całkowania
+        symbols = list(function.free_symbols)
         if not symbols:
-            return jsonify({"error": "Brak zmiennej do całkowania"})
-        
+            return jsonify({"error": "Nie znaleziono zmiennej do całkowania"}), 400
+
         variable = symbols[0]  # Pobiera pierwszą znalezioną zmienną
-        result = sp.integrate(data["function"], variable)
-        
+        result = sp.integrate(function, variable)
+
         return jsonify({"result": str(result)})
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": f"Błąd całkowania: {str(e)}"}), 400
 
 @app.route("/compare", methods=["POST"])
 def compare():
@@ -31,7 +38,7 @@ def compare():
         # Algebraiczne sprawdzenie równości
         algebraic_equality = sp.simplify(expr1 - expr2) == 0
 
-        # Numeryczne sprawdzenie równości
+        # Numeryczne sprawdzenie równości dla kilku wartości zmiennej
         var = list(expr1.free_symbols)[0] if expr1.free_symbols else sp.Symbol("x")
         test_values = [-10, -5, -1, 0, 1, 5, 10]
         numerical_equality = all(abs(sp.N(expr1.subs(var, v)) - sp.N(expr2.subs(var, v))) < 1e-6 for v in test_values)
@@ -40,7 +47,7 @@ def compare():
         similarity_score = 1.0 if algebraic_equality else (0.7 if numerical_equality else 0.3)
         return jsonify({"similarity_score": similarity_score})
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
