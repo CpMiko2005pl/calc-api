@@ -5,47 +5,54 @@ import sympy as sp
 app = Flask(__name__)
 CORS(app)  # Obsługa CORS
 
-@app.route("/integrate", methods=["POST"])
-def integrate():
+@app.route("/calculate", methods=["POST"])
+def calculate():
     data = request.json
     try:
-        function_str = data.get("function", "")
-        if not function_str:
-            return jsonify({"error": "Brak funkcji do całkowania"}), 400
+        input_str = data.get("input", "")
+        if not input_str:
+            return jsonify({"error": "Brak wyrażenia"}), 400
 
-        # Zamiana stringa na wyrażenie SymPy
+        # Rozpoznawanie operacji na podstawie pierwszego znaku
+        operation = input_str[0]
+        function_str = input_str[1:]
+
         function = sp.sympify(function_str)
-
-        # Automatyczne wykrywanie zmiennej całkowania
         symbols = list(function.free_symbols)
         if not symbols:
-            return jsonify({"error": "Nie znaleziono zmiennej do całkowania"}), 400
+            return jsonify({"error": "Nie znaleziono zmiennej w funkcji"}), 400
 
-        variable = symbols[0]  # Pobiera pierwszą znalezioną zmienną
+        variable = symbols[0]
 
-        # Sprawdzamy, czy mamy całkę oznaczoną
-        if "limits" in data:
-            limits = tuple(data["limits"])
-            a, b = limits[1], limits[2]
-
-            # Sprawdzamy, czy funkcja zmienia znak w przedziale
-            roots = sp.solveset(function, variable, domain=sp.Interval(a, b))
-
-            # Jeśli nie zmienia znaku, liczymy normalnie
-            if not roots or roots.is_EmptySet:
-                result = sp.integrate(function, (variable, a, b))
-            else:
-                # Jeśli zmienia znak, dzielimy całkę na podprzedziały
-                roots = sorted([r.evalf() for r in roots if r.is_real] + [a, b])
-                result = sum(abs(sp.integrate(function, (variable, roots[i], roots[i+1]))) for i in range(len(roots)-1))
-
-        else:
-            # Jeśli to całka nieoznaczona
+        # Obsługa operacji
+        if operation == "c":  # Całka
             result = sp.integrate(function, variable)
+        elif operation == "p":  # Pochodna
+            result = sp.diff(function, variable)
+        elif operation == "g":  # Granica
+            point = data.get("point", None)
+            if point is None:
+                return jsonify({"error": "Brak punktu granicy"}), 400
+            result = sp.limit(function, variable, point)
+        elif operation == "a":  # Asymptoty
+            vertical_asymptotes = sp.solve(sp.denom(function), variable)
+            horizontal_asymptotes = [sp.limit(function, variable, sp.oo),
+                                      sp.limit(function, variable, -sp.oo)]
+            m = sp.limit(function / variable, variable, sp.oo)
+            b = sp.limit(function - m * variable, variable, sp.oo)
+            oblique_asymptote = f"y = {m}x + {b}" if m.is_real and m != 0 else None
+
+            return jsonify({
+                "vertical": [str(v) for v in vertical_asymptotes if v.is_real],
+                "horizontal": [str(h) for h in horizontal_asymptotes if h.is_real],
+                "oblique": oblique_asymptote
+            })
+        else:
+            return jsonify({"error": "Nieznana operacja"}), 400
 
         return jsonify({"result": str(result)})
     except Exception as e:
-        return jsonify({"error": f"Błąd całkowania: {str(e)}"}), 400
+        return jsonify({"error": f"Błąd obliczeń: {str(e)}"}), 400
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
