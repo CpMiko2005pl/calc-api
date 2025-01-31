@@ -24,6 +24,7 @@ def calculate():
             function_str, point_str = function_str.rsplit(",", 1)
             point_str = point_str.strip()
 
+            # Konwersja na poprawne wartości
             if point_str == "∞":
                 point = sp.oo
             elif point_str == "-∞":
@@ -52,10 +53,13 @@ def calculate():
         elif operation == "g":  # Granica
             if point is None:
                 return jsonify({"error": "Brak punktu granicy"}), 400
-            if direction:
-                result = sp.limit(function, variable, point, dir=direction)
-            else:
-                result = sp.limit(function, variable, point)
+            try:
+                if direction:
+                    result = sp.limit(function, variable, point, dir=direction)
+                else:
+                    result = sp.limit(function, variable, point)
+            except Exception as e:
+                return jsonify({"error": f"Błąd obliczeń granicy: {str(e)}"}), 400
         elif operation == "a":  # Asymptoty
             vertical_asymptotes = sp.solve(sp.denom(function), variable)
             horizontal_asymptotes = [sp.limit(function, variable, sp.oo),
