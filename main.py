@@ -17,6 +17,26 @@ def calculate():
         operation = input_str[0]
         function_str = input_str[1:]
 
+        # Obsługa granicy (g), wyciąganie punktu granicy
+        point = None
+        direction = None
+        if operation == "g" and "," in function_str:
+            function_str, point_str = function_str.rsplit(",", 1)
+            point_str = point_str.strip()
+
+            if point_str == "∞":
+                point = sp.oo
+            elif point_str == "-∞":
+                point = -sp.oo
+            elif point_str.endswith("+"):
+                point = sp.sympify(point_str[:-1])
+                direction = "+"
+            elif point_str.endswith("-"):
+                point = sp.sympify(point_str[:-1])
+                direction = "-"
+            else:
+                point = sp.sympify(point_str)
+
         function = sp.sympify(function_str)
         symbols = list(function.free_symbols)
         if not symbols:
@@ -30,10 +50,12 @@ def calculate():
         elif operation == "p":  # Pochodna
             result = sp.diff(function, variable)
         elif operation == "g":  # Granica
-            point = data.get("point", None)
             if point is None:
                 return jsonify({"error": "Brak punktu granicy"}), 400
-            result = sp.limit(function, variable, point)
+            if direction:
+                result = sp.limit(function, variable, point, dir=direction)
+            else:
+                result = sp.limit(function, variable, point)
         elif operation == "a":  # Asymptoty
             vertical_asymptotes = sp.solve(sp.denom(function), variable)
             horizontal_asymptotes = [sp.limit(function, variable, sp.oo),
