@@ -17,7 +17,16 @@ def calculate():
         operation = input_str[0]
         function_str = input_str[1:]
 
-        function = sp.sympify(function_str)
+        # Obsługa granicy, format: g(expression, point)
+        if operation == "g":
+            if "," not in function_str:
+                return jsonify({"error": "Brak punktu granicy"}), 400
+            function_part, point_part = function_str.split(",", 1)
+            function = sp.sympify(function_part)
+            point = sp.sympify(point_part)
+        else:
+            function = sp.sympify(function_str)
+
         symbols = list(function.free_symbols)
         if not symbols:
             return jsonify({"error": "Nie znaleziono zmiennej w funkcji"}), 400
@@ -30,9 +39,6 @@ def calculate():
         elif operation == "p":  # Pochodna
             result = sp.diff(function, variable)
         elif operation == "g":  # Granica
-            point = data.get("point", None)
-            if point is None:
-                return jsonify({"error": "Brak punktu granicy"}), 400
             result = sp.limit(function, variable, point)
         elif operation == "a":  # Asymptoty
             vertical_asymptotes = sp.solve(sp.denom(function), variable)
