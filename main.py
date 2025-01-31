@@ -13,7 +13,6 @@ def calculate():
         if not input_str:
             return jsonify({"error": "Brak wyrażenia"}), 400
 
-        # Rozpoznawanie operacji na podstawie pierwszego znaku
         operation = input_str[0]
         function_str = input_str[1:]
 
@@ -24,7 +23,6 @@ def calculate():
 
         variable = symbols[0]
 
-        # Obsługa operacji
         if operation == "c":  # Całka
             result = sp.integrate(function, variable)
         elif operation == "p":  # Pochodna
@@ -65,6 +63,38 @@ def calculate():
                         extrema.append({"x": str(point), "type": "punkt siodłowy"})
 
             return jsonify({"extrema": extrema})
+
+        elif operation == "w":  # Wypukłość i wklęsłość
+            second_derivative = sp.diff(sp.diff(function, variable))
+            inflection_points = sp.solve(second_derivative, variable)
+
+            concave_intervals = []
+            convex_intervals = []
+
+            if inflection_points:
+                sorted_points = sorted([p for p in inflection_points if p.is_real])
+                prev = -sp.oo  # Start od -∞
+
+                for point in sorted_points:
+                    test_value = second_derivative.subs(variable, (prev + point) / 2)
+                    if test_value > 0:
+                        convex_intervals.append(f"({prev}, {point})")
+                    else:
+                        concave_intervals.append(f"({prev}, {point})")
+                    prev = point
+
+                test_value = second_derivative.subs(variable, prev + 1)
+                if test_value > 0:
+                    convex_intervals.append(f"({prev}, ∞)")
+                else:
+                    concave_intervals.append(f"({prev}, ∞)")
+
+            return jsonify({
+                "convex": convex_intervals,
+                "concave": concave_intervals,
+                "inflection_points": [str(p) for p in inflection_points if p.is_real]
+            })
+
         else:
             return jsonify({"error": "Nieznana operacja"}), 400
 
