@@ -17,27 +17,6 @@ def calculate():
         operation = input_str[0]
         function_str = input_str[1:]
 
-        # Obsługa granicy (g), wyciąganie punktu granicy
-        point = None
-        direction = None
-        if operation == "g" and "," in function_str:
-            function_str, point_str = function_str.rsplit(",", 1)
-            point_str = point_str.strip()
-
-            # Konwersja na poprawne wartości
-            if point_str == "∞":
-                point = sp.oo
-            elif point_str == "-∞":
-                point = -sp.oo
-            elif point_str.endswith("+"):
-                point = sp.sympify(point_str[:-1])
-                direction = "+"
-            elif point_str.endswith("-"):
-                point = sp.sympify(point_str[:-1])
-                direction = "-"
-            else:
-                point = sp.sympify(point_str)
-
         function = sp.sympify(function_str)
         symbols = list(function.free_symbols)
         if not symbols:
@@ -51,15 +30,12 @@ def calculate():
         elif operation == "p":  # Pochodna
             result = sp.diff(function, variable)
         elif operation == "g":  # Granica
-            if point is None:
+            if "," not in function_str:
                 return jsonify({"error": "Brak punktu granicy"}), 400
-            try:
-                if direction:
-                    result = sp.limit(function, variable, point, dir=direction)
-                else:
-                    result = sp.limit(function, variable, point)
-            except Exception as e:
-                return jsonify({"error": f"Błąd obliczeń granicy: {str(e)}"}), 400
+            function_expr, point_str = function_str.split(",", 1)
+            function = sp.sympify(function_expr)
+            point = sp.sympify(point_str)
+            result = sp.limit(function, variable, point)
         elif operation == "a":  # Asymptoty
             vertical_asymptotes = sp.solve(sp.denom(function), variable)
             horizontal_asymptotes = [sp.limit(function, variable, sp.oo),
@@ -76,7 +52,29 @@ def calculate():
         else:
             return jsonify({"error": "Nieznana operacja"}), 400
 
-        return jsonify({"result": str(result)})
+        return jsonify({"result": f"<span style='opacity: 0.5'>{str(result)}</span>"})
+    except Exception as e:
+        return jsonify({"error": f"Błąd obliczeń: {str(e)}"}), 400
+
+@app.route("/calculate_gr", methods=["POST"])
+def calculate_gr():
+    data = request.json
+    try:
+        input_str = data.get("input", "")
+        if not input_str.startswith("gr"):
+            return jsonify({"error": "Brak wyrażenia granicy"}), 400
+
+        function_str = input_str[2:]  # Usuwamy "gr" na początku
+        if "," not in function_str:
+            return jsonify({"error": "Brak punktu granicy"}), 400
+
+        function_expr, point_str = function_str.split(",", 1)
+        function = sp.sympify(function_expr)
+        point = sp.sympify(point_str)
+        variable = list(function.free_symbols)[0]
+
+        result = sp.limit(function, variable, point)
+        return jsonify({"result": f"<span style='opacity: 0.5'>{str(result)}</span>"})
     except Exception as e:
         return jsonify({"error": f"Błąd obliczeń: {str(e)}"}), 400
 
