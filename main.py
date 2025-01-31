@@ -9,7 +9,7 @@ CORS(app)  # Obsługa CORS
 def calculate():
     data = request.json
     try:
-        input_str = data.get("input", "")
+        input_str = data.get("input", "").strip()
         if not input_str:
             return jsonify({"error": "Brak wyrażenia"}), 400
 
@@ -26,13 +26,7 @@ def calculate():
 
         # Obsługa operacji
         if operation == "c":  # Całka
-            lower = data.get("lower", None)
-            upper = data.get("upper", None)
-            
-            if lower is not None and upper is not None:
-                result = sp.integrate(function, (variable, lower, upper))  # Całka oznaczona
-            else:
-                result = sp.integrate(function, variable)  # Całka nieoznaczona
+            result = sp.integrate(function, variable)
         elif operation == "p":  # Pochodna
             result = sp.diff(function, variable)
         elif operation == "g":  # Granica
@@ -53,6 +47,24 @@ def calculate():
                 "horizontal": [str(h) for h in horizontal_asymptotes if h.is_real],
                 "oblique": oblique_asymptote
             })
+        elif operation == "e":  # Ekstrema lokalne
+            first_derivative = sp.diff(function, variable)
+            critical_points = sp.solve(first_derivative, variable)
+
+            extrema = []
+            for point in critical_points:
+                second_derivative = sp.diff(first_derivative, variable)
+                second_derivative_value = second_derivative.subs(variable, point)
+
+                if second_derivative_value.is_real:
+                    if second_derivative_value > 0:
+                        extrema.append({"x": str(point), "type": "minimum"})
+                    elif second_derivative_value < 0:
+                        extrema.append({"x": str(point), "type": "maksimum"})
+                    else:
+                        extrema.append({"x": str(point), "type": "punkt siodłowy"})
+
+            return jsonify({"extrema": extrema})
         else:
             return jsonify({"error": "Nieznana operacja"}), 400
 
