@@ -30,11 +30,9 @@ def calculate():
         elif operation == "p":  # Pochodna
             result = sp.diff(function, variable)
         elif operation == "g":  # Granica
-            if "," not in function_str:
+            point = data.get("point", None)
+            if point is None:
                 return jsonify({"error": "Brak punktu granicy"}), 400
-            function_expr, point_str = function_str.split(",", 1)
-            function = sp.sympify(function_expr)
-            point = sp.sympify(point_str)
             result = sp.limit(function, variable, point)
         elif operation == "a":  # Asymptoty
             vertical_asymptotes = sp.solve(sp.denom(function), variable)
@@ -52,29 +50,7 @@ def calculate():
         else:
             return jsonify({"error": "Nieznana operacja"}), 400
 
-        return jsonify({"result": f"<span style='opacity: 0.5'>{str(result)}</span>"})
-    except Exception as e:
-        return jsonify({"error": f"Błąd obliczeń: {str(e)}"}), 400
-
-@app.route("/calculate_gr", methods=["POST"])
-def calculate_gr():
-    data = request.json
-    try:
-        input_str = data.get("input", "")
-        if not input_str.startswith("gr"):
-            return jsonify({"error": "Brak wyrażenia granicy"}), 400
-
-        function_str = input_str[2:]  # Usuwamy "gr" na początku
-        if "," not in function_str:
-            return jsonify({"error": "Brak punktu granicy"}), 400
-
-        function_expr, point_str = function_str.split(",", 1)
-        function = sp.sympify(function_expr)
-        point = sp.sympify(point_str)
-        variable = list(function.free_symbols)[0]
-
-        result = sp.limit(function, variable, point)
-        return jsonify({"result": f"<span style='opacity: 0.5'>{str(result)}</span>"})
+        return jsonify({"result": str(result)})
     except Exception as e:
         return jsonify({"error": f"Błąd obliczeń: {str(e)}"}), 400
 
